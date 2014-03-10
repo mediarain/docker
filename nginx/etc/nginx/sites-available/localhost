@@ -1,0 +1,58 @@
+set $my_domain "your.domain.here"
+
+server {
+    listen         80;
+    server_name    www.$my_domain;
+    return         301 $scheme://$my_domain$request_uri;
+}
+
+server {
+    access_log     /var/log/nginx/$my_domain.access main;
+    add_header     Cache-Control    "max-age=86400, public, must-revalidate, proxy-revalidate";
+    add_header     Pragma           public;
+    charset        utf-8;
+    error_log      /var/log/nginx/$my_domain.errors;
+    expires        86400s;
+    index          index.php index.html index.htm;
+    listen         80 default_server;
+    root           /var/www;
+    server_name    $my_domain;
+    try_files      $uri $uri/ /index.php?$query_string;
+
+    location ~ /\. {
+        return                          404;
+    }
+
+    location = /favicon.ico {
+        access_log                      off;
+        log_not_found                   off;
+    }
+
+    location = /robots.txt {
+        access_log                      off;
+        log_not_found                   off;
+    }
+
+    location ~* \.(css|gif|htm|html|jpeg|jpg|js|png|svg|swf)$ {
+        add_header                      Cache-Control    "max-age=604800, public, must-revalidate, proxy-revalidate";
+        add_header                      Pragma           public;
+        expires                         604800s;
+    }
+
+    location ~* \.php {
+        try_files                       $uri =404;
+
+        fastcgi_buffers                 256 4k;
+        fastcgi_buffer_size             128k;
+        fastcgi_busy_buffers_size       256k;
+        fastcgi_connect_timeout         60;
+        fastcgi_ignore_client_abort     off;
+        fastcgi_index                   index.php;
+        fastcgi_pass                    unix:/run/php5-fpm.sock;
+        fastcgi_read_timeout            180;
+        fastcgi_send_timeout            180;
+        fastcgi_split_path_info         ^(.+\.php)(/.+)$;
+        fastcgi_temp_file_write_size    256k;
+        include                         fastcgi_params;
+    }
+}
